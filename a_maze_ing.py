@@ -1,26 +1,12 @@
 import sys
-from dataclasses import dataclass
+from generator import Generator
+from config import Config
 from pathlib import Path
 
+MANDATORY_KEYS = ("WIDTH", "HEIGHT", "ENTRY", "EXIT", "OUTPUT_FILE", "PERFECT")
 
 class ConfigError(Exception):
     """Raised on any invalid configuration."""
-
-
-@dataclass(frozen=True)
-class Config:
-    """Parsed and validated maze configuration."""
-
-    width: int
-    height: int
-    entry: tuple[int, int]
-    exit: tuple[int, int]
-    output_file: str
-    perfect: bool
-    seed: int | None = None
-
-
-MANDATORY_KEYS = ("WIDTH", "HEIGHT", "ENTRY", "EXIT", "OUTPUT_FILE", "PERFECT")
 
 
 def parse_config(path: str) -> Config:
@@ -103,13 +89,17 @@ def main(argv: list[str]) -> int:
         return 1
     try:
         config = parse_config(argv[1])
+        print(f"parsed: {config.width}x{config.height} perfect={config.perfect}")
+        maze = Generator(config)
+        maze.display_ascii()
+        maze.generate()
+        maze.display_ascii()
     except ConfigError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
     except FileNotFoundError:
         print(f"Error: config file not found: {argv[1]}", file=sys.stderr)
         return 1
-    print(f"parsed: {config.width}x{config.height} perfect={config.perfect}")
     return 0
 
 
