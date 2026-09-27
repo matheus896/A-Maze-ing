@@ -34,9 +34,6 @@ class Generator:
         self.visited: set[tuple[int, int]] = set()
         self.blocked_cells: set[tuple[int, int]] = set()
 
-        if self.seed is not None:
-            random.seed(self.seed)
-
     def generate(self) -> None:
         self.apply_mask()
         self.run_dfs()

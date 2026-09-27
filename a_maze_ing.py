@@ -91,8 +91,7 @@ def main(argv: list[str]) -> int:
     try:
         config = parse_config(argv[1])
         print(f"parsed: {config.width}x{config.height} perfect={config.perfect}")
-        maze = Generator(config)
-        menu(maze)
+        menu(config)
     except ConfigError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1

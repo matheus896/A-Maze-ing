@@ -1,4 +1,5 @@
 import os
+from config import Config
 from generator import Generator
 
 
@@ -7,9 +8,10 @@ def clear_terminal() -> None:
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
-def menu(maze: Generator) -> None:
+def menu(config: Config) -> None:
     show_path = False
     clear_terminal()
+    maze = Generator(config)
     maze.generate()
     maze.display_ascii(show_path)
     while True:
@@ -26,6 +28,7 @@ def menu(maze: Generator) -> None:
 
         if choice == "1":
             clear_terminal()
+            maze = Generator(config)
             maze.generate()
             maze.display_ascii(show_path)
             print("New maze")
