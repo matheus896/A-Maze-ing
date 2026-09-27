@@ -1,4 +1,5 @@
 import sys
+from menu import menu
 from generator import Generator
 from config import Config
 from pathlib import Path
@@ -91,9 +92,7 @@ def main(argv: list[str]) -> int:
         config = parse_config(argv[1])
         print(f"parsed: {config.width}x{config.height} perfect={config.perfect}")
         maze = Generator(config)
-        maze.display_ascii()
-        maze.generate()
-        maze.display_ascii()
+        menu(maze)
     except ConfigError as error:
         print(f"Error: {error}", file=sys.stderr)
         return 1
@@ -101,7 +100,6 @@ def main(argv: list[str]) -> int:
         print(f"Error: config file not found: {argv[1]}", file=sys.stderr)
         return 1
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))

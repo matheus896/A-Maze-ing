@@ -98,7 +98,7 @@ class Generator:
             else:
                 stack.pop()  # 7. Chamada de método com ()
 
-    def display_ascii(self) -> None:
+    def display_ascii(self, show_path: bool) -> None:
         """Render ASCII representation directly in terminal with highlighted mask."""
         print("+" + "---+" * self.width)
         for y in range(self.height):
