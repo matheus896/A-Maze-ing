@@ -1,5 +1,6 @@
 import random
 from config import Config
+from color import Color
 
 
 class Generator:
@@ -26,7 +27,6 @@ class Generator:
         self.perfect = config.perfect
         self.seed = config.seed
 
-        # 1. Matriz 2D correta [linhas x colunas]
         self.grid: list[list[int]] = [
             [15 for _ in range(self.width)] for _ in range(self.height)
         ]
@@ -59,7 +59,6 @@ class Generator:
 
     def run_dfs(self) -> None:
         current = self.entry
-        # 4. Inicializa a pilha com o nó inicial
         stack: list[tuple[int, int]] = [current]
         self.visited.add(current)
 
@@ -67,12 +66,11 @@ class Generator:
             (0, -1, self.WALL_NORTH, self.WALL_SOUTH),
             (1, 0, self.WALL_EAST, self.WALL_WEST),
             (0, 1, self.WALL_SOUTH, self.WALL_NORTH),
-            (-1, 0, self.WALL_WEST, self.WALL_EAST),  # 3. self.self corrigido
+            (-1, 0, self.WALL_WEST, self.WALL_EAST),
         ]
 
         while stack:
             cX, cY = stack[-1]
-            # 2. Tipagem com : em vez de =
             univisited_neighbors: list[tuple[int, int, int, int]] = []
 
             for dX, dY, wall_curr, wall_nei in directions:
@@ -85,39 +83,40 @@ class Generator:
             if univisited_neighbors:
                 nX, nY, wall_curr, wall_nei = random.choice(univisited_neighbors)
 
-                # 5. Acesso com dois colchetes [cY][cX]
                 self.grid[cY][cX] &= ~wall_curr
                 self.grid[nY][nX] &= ~wall_nei
 
-                # 6. Atualização de estado para avançar o DFS
                 self.visited.add((nX, nY))
                 stack.append((nX, nY))
             else:
-                stack.pop()  # 7. Chamada de método com ()
+                stack.pop()
 
-    def display_ascii(self, show_path: bool) -> None:
+    def display_ascii(self, show_path: bool, change_color: bool) -> None:
         """Render ASCII representation directly in terminal with highlighted mask."""
-        print("+" + "---+" * self.width)
+        if change_color:
+            theme = Color.pick_color()
+        else:
+            theme = Color.RESET
+        print(theme + "+" + "---+" * self.width + Color.RESET)
         for y in range(self.height):
-            row_str = "|"
+            row_str = theme + "|" + Color.RESET
             for x in range(self.width):
                 cell = self.grid[y][x]
 
-                # Check for special display markers
                 if (x, y) == self.entry:
                     content = " E "
-                elif (x, y) == self.exit:  # 8. self.exit ajustado
+                elif (x, y) == self.exit:
                     content = " X "
                 elif (x, y) in self.blocked_cells:
                     content = "███"
                 else:
                     content = "   "
 
-                row_str += f"{content}|" if (cell & self.WALL_EAST) else f"{content} "
+                row_str += f"{content}{theme}|{Color.RESET}" if (cell & self.WALL_EAST) else f"{content} "
             print(row_str)
 
             bottom_str = "+"
             for x in range(self.width):
                 cell = self.grid[y][x]
                 bottom_str += "---+" if (cell & self.WALL_SOUTH) else "   +"
-            print(bottom_str)
+            print(theme + bottom_str + Color.RESET)

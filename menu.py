@@ -13,7 +13,7 @@ def menu(config: Config) -> None:
     clear_terminal()
     maze = Generator(config)
     maze.generate()
-    maze.display_ascii(show_path)
+    maze.display_ascii(show_path, False)
     while True:
         print("1 - Re-generate a new maze and display it.")
         print("2 - Show/Hide a valid shortest path from the entrance to the exit.")
@@ -30,16 +30,16 @@ def menu(config: Config) -> None:
             clear_terminal()
             maze = Generator(config)
             maze.generate()
-            maze.display_ascii(show_path)
+            maze.display_ascii(show_path, False)
             print("New maze")
         elif choice == "2":
             clear_terminal()
             show_path = not show_path
-            maze.display_ascii(show_path)
+            maze.display_ascii(show_path, False)
             print(f"Show path: {show_path}")
         elif choice == "3":
             clear_terminal()
-            maze.display_ascii(show_path)
+            maze.display_ascii(show_path, True)
             print("Mudar cor")
         elif choice == "4":
             clear_terminal()
