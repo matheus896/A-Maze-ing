@@ -10,11 +10,13 @@ def clear_terminal() -> None:
 
 def menu(config: Config) -> None:
     show_path = False
-    clear_terminal()
     maze = Generator(config)
     maze.generate()
+    clear_terminal()
     maze.display_ascii(show_path, False)
+
     while True:
+
         print("1 - Re-generate a new maze and display it.")
         print("2 - Show/Hide a valid shortest path from the entrance to the exit.")
         print("3 - Change maze wall colours.")
@@ -45,4 +47,6 @@ def menu(config: Config) -> None:
             clear_terminal()
             return
         else:
+            clear_terminal()
+            maze.display_ascii(show_path, False)
             print("Please enter a number between 1 and 4.")
