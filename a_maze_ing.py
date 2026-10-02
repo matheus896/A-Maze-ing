@@ -1,8 +1,8 @@
 import sys
-from menu import menu
-from generator import Generator
-from config import Config
 from pathlib import Path
+
+from config import Config
+from menu import menu
 
 MANDATORY_KEYS = ("WIDTH", "HEIGHT", "ENTRY", "EXIT", "OUTPUT_FILE", "PERFECT")
 
@@ -83,20 +83,26 @@ def _optional_int(key: str, raw: dict[str, str]) -> int | None:
 
 
 def main(argv: list[str]) -> int:
-    """Parse the config and print a summary (generator arrives next)."""
+    """Parse the config and run the interactive maze menu."""
     if len(argv) != 2:
         print(f"usage: python3 {Path(argv[0]).name} config.txt",
               file=sys.stderr)
         return 1
     try:
         config = parse_config(argv[1])
-        print(f"parsed: {config.width}x{config.height} perfect={config.perfect}")
-        menu(config)
-    except ConfigError as error:
-        print(f"Error: {error}", file=sys.stderr)
-        return 1
     except FileNotFoundError:
         print(f"Error: config file not found: {argv[1]}", file=sys.stderr)
+        return 1
+    except (ConfigError, OSError) as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    try:
+        menu(config)
+    except ValueError as error:
+        print(f"Error: {error}", file=sys.stderr)
+        return 1
+    except OSError as error:
+        print(f"Error: cannot write output file: {error}", file=sys.stderr)
         return 1
     return 0
 
