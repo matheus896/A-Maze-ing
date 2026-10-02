@@ -1,6 +1,7 @@
 """Interactive terminal menu: render the maze and handle user choices."""
 
 import os
+import random
 
 from color import Color
 from config import Config
@@ -14,9 +15,16 @@ def clear_terminal() -> None:
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def _new_maze(config: Config) -> MazeGenerator:
-    """Generate a maze from config, validate it and save its output file."""
-    maze = MazeGenerator(config.width, config.height, config.seed,
+def _next_seed(config: Config, first: bool) -> int:
+    """The config seed on the first run, a fresh random seed afterwards."""
+    if first and config.seed is not None:
+        return config.seed
+    return random.randrange(2 ** 31)
+
+
+def _new_maze(config: Config, seed: int) -> MazeGenerator:
+    """Generate a maze with seed, validate it and save its output file."""
+    maze = MazeGenerator(config.width, config.height, seed,
                          draw_42=True)
     maze.generate()
     if config.entry in maze.blocked or config.exit in maze.blocked:
@@ -74,9 +82,11 @@ def render_ascii(maze: MazeGenerator, entry: tuple[int, int],
 def menu(config: Config) -> None:
     """Run the interactive loop: regenerate, path, colours, quit."""
     show_path = False
-    maze = _new_maze(config)
+    seed = _next_seed(config, first=True)
+    maze = _new_maze(config, seed)
     clear_terminal()
     render_ascii(maze, config.entry, config.exit, show_path, False)
+    print(f"Seed: {seed}")
     while True:
         print("1 - Re-generate a new maze and display it.")
         print("2 - Show/Hide a valid shortest path from the entrance "
@@ -89,7 +99,8 @@ def menu(config: Config) -> None:
             print("\nExiting.")
             return
         if choice == "1":
-            maze = _new_maze(config)
+            seed = _next_seed(config, first=False)
+            maze = _new_maze(config, seed)
         elif choice == "2":
             show_path = not show_path
         elif choice == "4":
@@ -101,3 +112,4 @@ def menu(config: Config) -> None:
             continue
         clear_terminal()
         render_ascii(maze, config.entry, config.exit, show_path, choice == "3")
+        print(f"Seed: {seed}")
