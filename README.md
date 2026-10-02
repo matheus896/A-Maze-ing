@@ -1,51 +1,69 @@
-_This project has been created as part of the 42 curriculum by matalmei._
+_This project has been created as part of the 42 curriculum by matalmei, vfreitas._
 
 # A-Maze-ing
 
 ## Description
 
-A-Maze-ing is a Python project from the 42 curriculum. Its goal is to generate
-mazes from a configuration file, encode their walls as hexadecimal digits,
-write the result to an output file, and display a visual solution path.
+A-Maze-ing generates mazes from a configuration file, encodes the walls of
+each cell as a hexadecimal digit, writes the result to an output file, and
+shows the maze in the terminal with its shortest solution path.
 
-This repository is currently an early Slice 0 checkpoint. The configuration
-parser and the first graph helper are implemented and tested. Maze generation,
-path finding, serialization, display, and packaging are still planned.
+The project has two generation modes. With `PERFECT=True` the maze is a
+perfect maze: a single path connects any two cells, so there are no loops.
+With `PERFECT=False` the maze is meant to be a playable Pac-Man board, with
+independent routes, reachable corners and centre, and few dead-ends.
 
-## Current Status
+The maze generation logic lives in a standalone `mazegen.py` module so it can
+be reused by a later project. The application around it (`a_maze_ing.py`,
+`config.py`, `menu.py`, `color.py`) handles the config file, the output file,
+and the terminal menu.
 
-Implemented:
+## Current status
 
-- `a_maze_ing.py` parses and validates the mandatory configuration keys.
-- Coordinates are converted from the subject's `(x,y)` format to internal
-  `(row,column)` tuples.
-- Optional integer seeds are accepted by the configuration parser.
-- `maze_graph.py` counts open passages in a hexadecimal wall grid.
-- 11 pytest tests currently pass.
-- `maze_analyzer.py` is included as the local validation tool for future maze
-  outputs.
+Implemented and passing the `PERFECT=True` contract end to end:
 
-Not implemented yet:
+- Config parsing and validation, including the optional `SEED`.
+- `MazeGenerator`: wall bitmask grid, iterative recursive-backtracker
+  generation, seed-based reproducibility, and the visible `42` pattern made of
+  fully closed cells.
+- `solve(entry, exit)`: breadth-first search returning the shortest path as
+  `N`, `E`, `S`, `W`.
+- Hexadecimal output file with the entry, exit, and path footer.
+- Terminal ASCII rendering with the entry, exit, path, and `42` cells, plus a
+  menu to regenerate, show or hide the path, change wall colours, and quit.
+- `maze_analyzer.py` reports `PERFECT maze` for the current default output.
 
-- `MazeGenerator` and the iterative recursive-backtracker algorithm.
-- Breadth-first search and shortest-path output.
-- Hexadecimal maze serialization.
-- Pac-Man mode, the `42` pattern, and ASCII interaction.
-- The reusable `mazegen` package build.
+Still to do:
+
+- `PERFECT=False` (Pac-Man mode) is read from the config but not yet applied:
+  the generator always builds a perfect maze. This is the next slice.
+- Makefile, `pyproject.toml`, wheel and source build, and the `flake8` and
+  `mypy` lint pass.
 
 ## Instructions
 
-The current checkpoint requires Python 3.10 or later. A virtual environment is
-recommended.
+Requires Python 3.10 or later. A virtual environment is recommended.
 
-Run the current configuration parser:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install pytest
+```
+
+Run the program with the config file as the only argument:
 
 ```bash
 python3 a_maze_ing.py config.txt
 ```
 
-At this stage, the command validates the configuration and prints a summary;
-it does not generate or write a maze yet.
+The program writes the output file named in `OUTPUT_FILE`, prints the seed it
+used, and opens the terminal menu.
+
+Check a generated file with the analyzer supplied with the subject:
+
+```bash
+python3 maze_analyzer.py maze.txt
+```
 
 Run the tests:
 
@@ -53,51 +71,45 @@ Run the tests:
 python3 -m pytest
 ```
 
-Expected result for this checkpoint: 11 tests pass.
+The current suite has 27 tests covering the config parser, the graph helper,
+the generator, the solver, the serializer, the `42` mask, and the CLI.
 
-## Configuration
+## Configuration file
 
-The configuration file uses one `KEY=VALUE` pair per line. Empty lines and
-lines beginning with `#` are ignored.
+The config file has one `KEY=VALUE` pair per line. Empty lines and lines that
+start with `#` are ignored. The mandatory keys are `WIDTH`, `HEIGHT`, `ENTRY`,
+`EXIT`, `OUTPUT_FILE`, and `PERFECT`. `SEED` is optional.
+
+Default `config.txt` in this repository:
 
 ```text
-WIDTH=20
-HEIGHT=15
+# a-maze-ing default configuration
+WIDTH=10
+HEIGHT=10
 ENTRY=0,0
-EXIT=19,14
-PERFECT=False
+EXIT=9,8
+PERFECT=True
 SEED=42
 OUTPUT_FILE=maze.txt
 ```
 
-Mandatory keys:
+| Key | Mandatory | Meaning |
+| --- | --- | --- |
+| `WIDTH` | yes | Maze width in cells. |
+| `HEIGHT` | yes | Maze height in cells. |
+| `ENTRY` | yes | Entry cell as `x,y`, inside the bounds. |
+| `EXIT` | yes | Exit cell as `x,y`, inside the bounds and different from `ENTRY`. |
+| `PERFECT` | yes | `True` or `False` (`1` and `0` also accepted). |
+| `SEED` | no | Integer seed for reproducible generation. If absent, a seed is drawn and printed. |
+| `OUTPUT_FILE` | yes | Path of the file the maze is written to. |
 
-- `WIDTH`: positive maze width in cells.
-- `HEIGHT`: positive maze height in cells.
-- `ENTRY`: entry coordinates in `(x,y)` format.
-- `EXIT`: exit coordinates in `(x,y)` format, different from `ENTRY`.
-- `OUTPUT_FILE`: intended output filename.
-- `PERFECT`: `True`, `False`, `1`, or `0`.
+Coordinates in the config use the subject `x,y` order. Inside the code the
+coordinates are stored as `(row, column)`; `write_output` converts back to
+`x,y` for the footer.
 
-Optional keys:
+## Output file format
 
-- `SEED`: an integer used later for reproducible maze generation.
-
-## Planned Algorithm
-
-The selected generation algorithm is an iterative recursive backtracker. It
-will use an explicit Python list as a stack instead of Python recursion. This
-keeps the traversal logic equivalent to depth-first search without depending
-on the interpreter's recursion limit.
-
-The algorithm is planned for the perfect-maze mode because it builds a
-spanning tree: every cell is reachable and no cycle is introduced. Prim's and
-Kruskal's algorithms may be considered later as optional extensions, but they
-are not needed for the first working slice.
-
-## Planned Output Format
-
-Each cell will be written as one hexadecimal digit. The wall bits will be:
+Every cell is one hexadecimal digit. A set bit means the wall is closed:
 
 | Bit | Direction |
 | --- | --- |
@@ -106,69 +118,111 @@ Each cell will be written as one hexadecimal digit. The wall bits will be:
 | 2 | South |
 | 3 | West |
 
-A set bit means that the wall is closed. Rows will be followed by an empty
-line, the entry coordinates, the exit coordinates, and the shortest path using
-`N`, `E`, `S`, and `W`.
+Rows are written one per line. After an empty line come three footer lines:
+the entry coordinates, the exit coordinates, and the shortest path from entry
+to exit using the letters `N`, `E`, `S`, `W`. Every line ends with `\n`.
 
-## Reusable Module
+## Generation algorithm
 
-The final reusable component will be a single root-level `mazegen.py` module
-containing the `MazeGenerator` class. It will expose the generated structure
-and a solution, accept custom dimensions and seeds, and be buildable as a
-`mazegen-*` wheel or source distribution.
+The generator uses an iterative recursive backtracker, which is a
+depth-first search that carves passages as it visits cells.
 
-This module does not exist in the current checkpoint yet. The current parser
-and graph helper are application groundwork, not the final reusable package.
+It was chosen because it builds a spanning tree over the cells: every cell is
+reachable and no cycle is created. That is exactly what `PERFECT=True`
+requires, a single path between any two cells. The traversal keeps an explicit
+list as a stack instead of using Python recursion, because the default
+recursion limit of about 1000 frames would break on large mazes.
 
-## Roadmap
+The `42` pattern is applied before carving. Its cells are marked as already
+visited, so the backtracker never opens a wall in them. They stay fully closed
+(`0xF`), which is how the subject asks the pattern to be drawn. If the maze is
+too small for the pattern, the program prints an error on the console and
+omits it, as the subject allows.
 
-1. Complete Slice 0 with perfect-maze generation, BFS, serialization, and
-   analyzer validation.
-2. Add Pac-Man mode with loops, reachable corners and centre, and few dead
-   ends.
-3. Add the visible `42` pattern.
-4. Add ASCII rendering and interactions for regeneration, path visibility, and
-   wall colours.
-5. Build and document the reusable package, Makefile, strict linting, and final
-   delivery files.
+`PERFECT=False` will reuse the same spanning tree and then open extra walls to
+create loops, and braid the dead-ends. That work is not finished yet.
 
-## Project Management
+## Reusable module
 
-The project is currently developed by `matalmei` alone, covering algorithm
-design, implementation, testing, and documentation. A future collaboration
-is planned, but no additional team member is listed yet.
+The reusable part is `mazegen.py`, which contains the `MazeGenerator` class
+and nothing tied to the terminal or the config file. It exposes the generated
+structure through `grid` and the blocked `42` cells through `blocked`, and it
+computes a solution with `solve`.
 
-The implementation started with a tracer-bullet approach: validate the input
-boundary first, then validate the graph representation before connecting the
-generator, solver, serializer, and display. This keeps each step testable and
-makes the analyzer a later acceptance check instead of a last-minute debug
-tool.
+```python
+from mazegen import MazeGenerator
 
-The incremental TDD approach has worked well for the parser and passage-count
-helper. The main improvement still needed is completing the generator pipeline
-so the current configuration becomes an end-to-end executable maze program.
+maze = MazeGenerator(width=20, height=15, seed=42, draw_42=True)
+maze.generate()
 
-Tools used so far include Python, `venv`, pytest, Git, the supplied
-`maze_analyzer.py`, and AI assistance for subject analysis, planning, review,
-and learning support. Generated suggestions are reviewed and tested before
-being accepted.
+maze.solve((0, 0), (14, 19))              # "(row, col)" -> "EESS..."
+maze.write_output("maze.txt", (0, 0), (14, 19))
+```
+
+`width` and `height` are required. `seed` makes the output reproducible.
+`draw_42` turns the `42` pattern on. Entry and exit passed to `solve` and
+`write_output` use internal `(row, column)` order.
+
+The class uses only the standard library, so the module has no runtime
+dependencies. It will be packaged as `mazegen-*` (wheel and source
+distribution) from a `pyproject.toml` at the repository root. The packaging
+files are not in place yet.
+
+The `LICENSE.md` at the repository root is MIT, so a later project can reuse
+and distribute this module.
+
+## Team and project management
+
+The project is developed by two students.
+
+- `matalmei` (Matheus) worked on the input boundary (config parser), the
+  `MazeGenerator` with seed-based reproducibility, the shortest-path solver,
+  the serializer, and the merge of the two generation branches into
+  `mazegen.py`. The remaining planned work on this side is the Makefile, the
+  package build, the lint pass, and this README.
+- `vfreitas` (Vitor) worked on the iterative depth-first generation, the `42`
+  mask, the ASCII display, and the interactive menu.
+
+Planning started with a tracer bullet: get the thinnest path that crosses the
+whole system from the config file to an analyzer-approved output, then grow it
+slice by slice. The input boundary came first, then the graph helpers, then
+generation, solving, serialization, display, and interactions. Each slice was
+checked against `maze_analyzer.py` before moving on.
+
+What worked well: the analyzer as an oracle after every change, seed-based
+reproducibility for debugging, and tests written before the implementation.
+What could improve: the README fell behind the code during the work, the two
+students built two separate generators at the start and paid for it in a merge,
+and a coordinate swap between the internal `(row, column)` order and the `x,y`
+footer cost debugging time because it failed silently.
+
+Tools used: Python 3.10+, `venv`, pytest, Git and GitHub, the supplied
+`maze_analyzer.py`, and AI assistance described below.
 
 ## Resources
 
+Classic references:
+
 - [Mazes for Programmers](https://mazesforprogrammers.com/) by Jamis Buck.
-- [Spanning tree](https://en.wikipedia.org/wiki/Spanning_tree).
 - [Maze generation algorithm](https://en.wikipedia.org/wiki/Maze_generation_algorithm).
+- [Spanning tree](https://en.wikipedia.org/wiki/Spanning_tree).
 - [Breadth-first search](https://en.wikipedia.org/wiki/Breadth-first_search).
 - [Python `random` documentation](https://docs.python.org/3/library/random.html).
 - [Python Packaging User Guide](https://packaging.python.org/en/latest/tutorials/packaging-projects/).
 - [pytest documentation](https://docs.pytest.org/en/stable/).
 - [flake8 documentation](https://flake8.pycqa.org/en/latest/).
 - [mypy documentation](https://mypy.readthedocs.io/en/stable/).
-- `maze_analyzer.py`, the supplied local oracle for validating generated maze
-  files.
+- `maze_analyzer.py`, the local oracle supplied with the subject.
+
+How AI was used: AI supported subject analysis and slice planning, explanations
+of the algorithms from first principles, validation of algorithm approaches
+against a reference outside the repository, the writing of the test suite, and
+the preparation of mechanical files such as the Makefile and packaging
+metadata. The team reviewed and tested every suggestion before accepting it,
+and wrote the core implementation so it can be explained during the defense.
+No generated content was accepted without understanding it.
 
 ## License
 
-The project is available under the [MIT License](LICENSE.md). The license
-allows the future `mazegen` module to be reused and distributed by later
-projects.
+The project is available under the [MIT License](LICENSE.md), which allows the
+`mazegen` module to be reused and distributed by later projects.
