@@ -160,43 +160,117 @@ IV.4 pede reprodutibilidade por seed, então a primeira execução tem que
 reproduzir a seed do config, e a regeneração precisa sortear outra para fazer
 sentido.
 
+### `a7b8465` chore: update readme and add release.md (01/10/2026)
+
+O `README.md` foi reescrito para o estado real do projeto (config, geração,
+solução, serialização, display e interações) em vez do checkpoint do Slice 0, e
+este `RELEASE.md` nasceu para registrar commit por commit o que mudou e por quê.
+
+O problema era o README ter ficado preso ao Slice 0, com 11 testes e sem
+gerador, o que não descrevia mais o projeto. O cap. VII cobra um README que
+qualquer pessoa entenda de primeira.
+
+### `0cb9aaf` feat: add Makefile (02/10/2026, Vitor)
+
+O Vitor adicionou o `Makefile` com os alvos que o cap. III.2 cobra: `install`,
+`run`, `debug`, `clean`, `lint` e `lint-strict`, este último com o
+`mypy --strict`.
+
+Na primeira versão o `clean` saiu grafado `cleean` e o `install` apontava para
+um `requirements.txt` que não existe no repositório. Os dois pontos foram
+corrigidos no commit seguinte.
+
+Ligações com o subject: III.2 (os alvos e as flags exatas do `lint`).
+
+### `085541b` feat: add Pac-Man mode, fix Makefile and make lint pass (05/10/2026)
+
+Este commit fechou o modo Pac-Man e deixou o lint limpo.
+
+No `mazegen.py` entrou o campo `perfect` e a pós-produção sobre a spanning
+tree: `_braid` abre uma parede em cada dead-end real, e `_add_loops` abre
+paredes internas até existirem pelo menos dois loops. Os helpers
+`_passage_count`, `_openable_walls` e `_loops` fazem as contas. O `menu.py`
+passou a repassar `config.perfect`, e o `config.txt` default virou
+`PERFECT=False`, com entry no centro (4,4) e exit no canto (9,9).
+
+O ponto conceitual: Pac-Man não é outro algoritmo, é pós-processamento do
+grafo. Abrir uma parede entre duas células já conectadas soma exatamente um
+loop, e abrir nunca reduz o grau de uma célula, então o braid não cria dead-end
+novo. Os cantos e o centro continuam alcançáveis porque abrir parede não
+desconecta nada, e nenhuma parede é aberta para dentro do "42".
+
+Também entraram 7 testes: loops maiores ou iguais a 2, zero dead-end real,
+cantos e centro alcançáveis, coerência das paredes, ausência de corredor
+desconexo, a regressão do modo perfect e o analyzer aceitando a saída. No
+`flake8` e no `mypy`, todas as pendências foram resolvidas, com anotações de
+tipo nos testes e quebras de linha no código.
+
+No Makefile, o alvo `clean` passou a remover `__pycache__`, `.mypy_cache` e
+`.pytest_cache`; o `install` deixou de apontar para o `requirements.txt`
+inexistente e instala `pytest`, `flake8` e `mypy`; e o `flake8` ganhou
+`--exclude=.venv`, porque sem isso ele varria o venv e acusava 120 erros.
+
+Ligações com o subject: IV.4 (o board Pac-Man), III.1 (lint), III.2 (Makefile)
+e III.3 (testes).
+
+### `67cc032` feat: package mazegen as a pip-installable wheel and sdist (05/10/2026)
+
+Entrou o `pyproject.toml` (backend setuptools, `name = "mazegen"`,
+`version = "1.0.0"`, `requires-python = ">=3.10"`, `license = "MIT"` com
+`license-files = ["LICENSE.md"]` e `py-modules = ["mazegen"]`). O `install` do
+Makefile passou a fazer `pip install -e .` antes de instalar as ferramentas de
+desenvolvimento.
+
+O problema era o cap. VI: o módulo precisa ser instalável por pip, e o arquivo
+`mazegen-*` precisa ficar na raiz do repositório. O `python -m build` gerou
+`mazegen-1.0.0-py3-none-any.whl` e `mazegen-1.0.0.tar.gz`, que foram copiados
+para a raiz e liberados no `.gitignore`. As regras genéricas `*.whl` e
+`*.tar.gz` continuam valendo para o resto, com uma exceção para `mazegen-*`. O
+build em si fica em `dist/`, que segue ignorado.
+
+Validação: o wheel e o sdist foram instalados em dois venvs limpos, com o
+`import mazegen` vindo de `site-packages` e a geração nos dois modos conferida.
+O wheel carrega só o `mazegen.py` e a metadata, e o sdist reconstrói o pacote a
+partir das fontes.
+
+Um detalhe de build: o classifier `License :: OSI Approved :: MIT License` teve
+de sair, porque o setuptools novo recusa combiná-lo com a expressão SPDX
+`license = "MIT"`.
+
+Ligações com o subject: VI (pacote `mazegen-*` instalável, artefato na raiz,
+`LICENSE.md`) e VII (o README como documentação do módulo).
+
 ## Onde estamos agora
 
-Estado verificado no fim da sessão de 01/10/2026:
+Estado verificado no fim da sessão de 05/10/2026:
 
 ```bash
-.venv/bin/python -m pytest -q      # 27 passed
-python3 a_maze_ing.py config.txt   # escreve maze.txt e imprime "Seed: 42"
-python3 maze_analyzer.py maze.txt  # Verdict: PERFECT maze
+.venv/bin/python -m pytest -q          # 34 passed
+make lint                              # flake8 e mypy limpos
+printf '4\n' | make run                # escreve maze.txt, imprime "Seed: 42"
+python3 maze_analyzer.py maze.txt      # Verdict: Pac-Man-USABLE (bonus)
+python -m build                        # mazegen-1.0.0 wheel + sdist
 ```
 
-O pipeline funciona ponta a ponta no modo `PERFECT=True`: config, geração,
-solução por BFS, serialização hexadecimal com rodapé, exibição ASCII e as
-interações do menu.
+Os dois modos funcionam ponta a ponta. Com `PERFECT=True` o analyzer dá
+`PERFECT maze`; com `PERFECT=False` dá `Pac-Man-USABLE`, sem dead-end real
+(nota de bônus) e com dois ou mais loops. O `Makefile` expõe `install`, `run`,
+`debug`, `clean`, `lint` e `lint-strict`, e o `flake8`/`mypy` passam com as
+flags do subject. O pacote `mazegen` builda e instala em venv limpo, tanto pelo
+wheel quanto pelo sdist.
 
-## O que vem a seguir: modo Pac-Man
+## O que vem a seguir
 
-Hoje a flag `PERFECT` é lida do config, mas ignorada. Mesmo com
-`PERFECT=False`, o gerador chama `_generate_perfect()` e produz um labirinto
-perfeito. O alvo da próxima fatia é o modo do cap. IV.4:
+Falta a defesa.
 
-- abrir pelo menos duas paredes internas, porque o analyzer conta
-  `loops = arestas - nós + 1` e exige 2 ou mais;
-- tratar os dead-ends reais, abrindo uma parede em cada um até sobrar zero, que
-  é o bônus `--max-dead-ends 0`;
-- garantir os quatro cantos e o centro como corredores alcançáveis;
-- não deixar nenhuma célula aberta fora da região alcançável;
-- trocar o `config.txt` default para `PERFECT=False`, com entry no centro e
-  exit num canto, como o cap. IV.4 sugere.
-
-O `PERFECT=True` continua valendo sem regressão.
+- Ensaio da defesa, incluindo a "brief modification" do cap. IX, com uma lista
+  de mudanças prováveis para treinar: trocar a posição do "42", mudar o bit de
+  encode, adicionar uma chave no config, e outras do mesmo tamanho.
 
 ## Pontos em aberto
 
 - O `maze_analyzer.py` está versionado, apesar de o plano prever que o
   entregável não o inclua. Decidir antes da entrega.
-- O `README.md` está desatualizado: ele ainda descreve o repositório como um
-  checkpoint do Slice 0, com 11 testes e sem gerador. Precisa de uma revisão no
-  fim, junto com o cap. VII.
-- Faltam o Makefile completo, o build do pacote `mazegen-*` e o lint
-  (`flake8` e `mypy`, que ainda não estão instalados no `.venv`).
+- O subject v2.3 tem a seção Pac-Man idêntica à v2.2, então a implementação não
+  muda; o PDF novo ficou no `.gitignore`.
+- Os `HANDOFF*.md` seguem untracked, como artefatos de sessão.
