@@ -17,21 +17,27 @@ MOVES = {
 }
 
 
-def _reachable_count(grid: list[list[int]]) -> int:
-    """Flood-fill from (0,0) through open passages; return cells reached."""
+def _reachable(grid: list[list[int]],
+               start: tuple[int, int]) -> set[tuple[int, int]]:
+    """Flood-fill from start through open passages; return cells reached."""
     rows, cols = len(grid), len(grid[0])
-    seen: set[tuple[int, int]] = {(0, 0)}
-    stack: list[tuple[int, int]] = [(0, 0)]
+    seen: set[tuple[int, int]] = {start}
+    stack: list[tuple[int, int]] = [start]
     while stack:
         r, c = stack.pop()
         cell = grid[r][c]
         for nr, nc, bit in ((r - 1, c, NORTH), (r, c + 1, EAST),
                             (r + 1, c, SOUTH), (r, c - 1, WEST)):
-            if 0 <= nr < rows and 0 <= nc < cols \
-                and not (cell & bit) and (nr, nc) not in seen:
+            if (0 <= nr < rows and 0 <= nc < cols
+                    and not (cell & bit) and (nr, nc) not in seen):
                 seen.add((nr, nc))
                 stack.append((nr, nc))
-    return len(seen)
+    return seen
+
+
+def _reachable_count(grid: list[list[int]]) -> int:
+    """Cells reachable from (0,0) through open passages."""
+    return len(_reachable(grid, (0, 0)))
 
 
 def _make(grid: list[list[int]]) -> MazeGenerator:
@@ -39,6 +45,18 @@ def _make(grid: list[list[int]]) -> MazeGenerator:
     gen = MazeGenerator(width=len(grid[0]), height=len(grid), seed=0)
     gen.grid = [row[:] for row in grid]
     return gen
+
+
+def _assert_coherent(gen: MazeGenerator) -> None:
+    """Every shared wall must be encoded the same by both neighbours."""
+    rows, cols = len(gen.grid), len(gen.grid[0])
+    for r in range(rows):
+        for c in range(cols):
+            cell = gen.grid[r][c]
+            if c + 1 < cols:
+                assert bool(cell & EAST) == bool(gen.grid[r][c + 1] & WEST)
+            if r + 1 < rows:
+                assert bool(cell & SOUTH) == bool(gen.grid[r + 1][c] & NORTH)
 
 
 def _walk(gen: MazeGenerator, entry: tuple[int, int],
@@ -72,32 +90,25 @@ def _bfs_distance(grid: list[list[int]], start: tuple[int, int],
     return dist.get(goal, -1)
 
 
-def test_perfect_5x5_has_24_open_passages():
+def test_perfect_5x5_has_24_open_passages() -> None:
     gen = MazeGenerator(width=5, height=5, seed=7)
     gen.generate()
     assert count_open_passages(gen.grid) == 24
 
 
-def test_perfect_5x5_reaches_every_cell():
+def test_perfect_5x5_reaches_every_cell() -> None:
     gen = MazeGenerator(width=5, height=5, seed=7)
     gen.generate()
     assert _reachable_count(gen.grid) == 25
 
 
-def test_walls_are_coherent():
+def test_walls_are_coherent() -> None:
     gen = MazeGenerator(width=5, height=5, seed=7)
     gen.generate()
-    rows, cols = len(gen.grid), len(gen.grid[0])
-    for r in range(rows):
-        for c in range(cols):
-            cell = gen.grid[r][c]
-            if c + 1 < cols:
-                assert bool(cell & EAST) == bool(gen.grid[r][c + 1] & WEST)
-            if r + 1 < rows:
-                assert bool(cell & SOUTH) == bool(gen.grid[r + 1][c] & NORTH)
+    _assert_coherent(gen)
 
 
-def test_same_seed_produces_same_maze():
+def test_same_seed_produces_same_maze() -> None:
     a = MazeGenerator(width=5, height=5, seed=7)
     b = MazeGenerator(width=5, height=5, seed=7)
     a.generate()
@@ -177,3 +188,101 @@ def test_draw_42_cells_are_fully_closed() -> None:
     assert gen.blocked
     assert all(gen.grid[r][c] == 0xF for r, c in gen.blocked)
     assert _reachable_count(gen.grid) == 100 - len(gen.blocked)
+
+
+SIDES = ((NORTH, -1, 0), (EAST, 0, 1), (SOUTH, 1, 0), (WEST, 0, -1))
+
+
+def _centre_candidates(width: int, height: int) -> set[tuple[int, int]]:
+    """Cell(s) around the middle, matching the analyzer for even sizes."""
+    rows = {height // 2} if height % 2 else {height // 2 - 1, height // 2}
+    cols = {width // 2} if width % 2 else {width // 2 - 1, width // 2}
+    return {(r, c) for r in rows for c in cols}
+
+
+def _loops(gen: MazeGenerator) -> int:
+    """Independent cycles: edges - nodes + 1 over the open cells."""
+    nodes = gen.width * gen.height - len(gen.blocked)
+    return count_open_passages(gen.grid) - nodes + 1
+
+
+def _real_dead_ends(gen: MazeGenerator) -> int:
+    """Cells with one passage that still have an openable, non-'42' wall."""
+    rows, cols = len(gen.grid), len(gen.grid[0])
+    count = 0
+    for r in range(rows):
+        for c in range(cols):
+            cell = gen.grid[r][c]
+            degree = sum(1 for bit, _, _ in SIDES if not cell & bit)
+            if (r, c) in gen.blocked or degree != 1:
+                continue
+            openable = any(
+                cell & bit and 0 <= r + dr < rows and 0 <= c + dc < cols
+                and gen.grid[r + dr][c + dc] != 0xF
+                for bit, dr, dc in SIDES
+            )
+            count += 1 if openable else 0
+    return count
+
+
+def _pacman() -> MazeGenerator:
+    gen = MazeGenerator(width=10, height=10, seed=42, draw_42=True,
+                        perfect=False)
+    gen.generate()
+    return gen
+
+
+def _free_centre(gen: MazeGenerator) -> tuple[int, int]:
+    return min(cell for cell in _centre_candidates(gen.width, gen.height)
+               if cell not in gen.blocked)
+
+
+def test_pacman_has_at_least_two_loops() -> None:
+    assert _loops(_pacman()) >= 2
+
+
+def test_pacman_has_no_real_dead_ends() -> None:
+    assert _real_dead_ends(_pacman()) == 0
+
+
+def test_pacman_corners_and_centre_are_reachable() -> None:
+    gen = _pacman()
+    reach = _reachable(gen.grid, _free_centre(gen))
+    corners = {(0, 0), (0, gen.width - 1),
+               (gen.height - 1, 0), (gen.height - 1, gen.width - 1)}
+    assert corners <= reach
+    assert any(cell in reach
+               for cell in _centre_candidates(gen.width, gen.height))
+
+
+def test_pacman_has_no_disconnected_corridors() -> None:
+    gen = _pacman()
+    reach = _reachable(gen.grid, _free_centre(gen))
+    every = {(r, c) for r in range(gen.height) for c in range(gen.width)}
+    assert reach == every - gen.blocked
+
+
+def test_pacman_walls_stay_coherent() -> None:
+    _assert_coherent(_pacman())
+
+
+def test_perfect_mode_still_has_zero_loops() -> None:
+    gen = MazeGenerator(width=10, height=10, seed=42, draw_42=True,
+                        perfect=True)
+    gen.generate()
+    assert _loops(gen) == 0
+
+
+def test_analyzer_accepts_pacman_output(tmp_path: Path) -> None:
+    analyzer = Path(__file__).resolve().parent / "maze_analyzer.py"
+    if not analyzer.exists():
+        pytest.skip("maze_analyzer.py not present")
+    gen = _pacman()
+    out = tmp_path / "maze.txt"
+    gen.write_output(str(out), _free_centre(gen), (0, 0))
+    result = subprocess.run(
+        [sys.executable, str(analyzer), str(out), "--max-dead-ends", "0"],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "Pac-Man-USABLE" in result.stdout

@@ -20,25 +20,32 @@ and the terminal menu.
 
 ## Current status
 
-Implemented and passing the `PERFECT=True` contract end to end:
+Implemented and validated end to end for both modes:
 
 - Config parsing and validation, including the optional `SEED`.
 - `MazeGenerator`: wall bitmask grid, iterative recursive-backtracker
   generation, seed-based reproducibility, and the visible `42` pattern made of
   fully closed cells.
+- `PERFECT=True`: a perfect maze, one path between any two cells.
+- `PERFECT=False`: a playable Pac-Man board. The tree is braided so no real
+  dead-end is left, and interior walls are opened until there are at least two
+  independent routes.
 - `solve(entry, exit)`: breadth-first search returning the shortest path as
   `N`, `E`, `S`, `W`.
 - Hexadecimal output file with the entry, exit, and path footer.
 - Terminal ASCII rendering with the entry, exit, path, and `42` cells, plus a
   menu to regenerate, show or hide the path, change wall colours, and quit.
-- `maze_analyzer.py` reports `PERFECT maze` for the current default output.
+- `maze_analyzer.py` reports `PERFECT maze` with `PERFECT=True` and
+  `Pac-Man-USABLE` (bonus grade, no real dead-end) with `PERFECT=False`.
+- `flake8` and `mypy` pass with the flags from the subject, and the `Makefile`
+  exposes the targets it requires.
 
 Still to do:
 
-- `PERFECT=False` (Pac-Man mode) is read from the config but not yet applied:
-  the generator always builds a perfect maze. This is the next slice.
-- Makefile, `pyproject.toml`, wheel and source build, and the `flake8` and
-  `mypy` lint pass.
+- `pyproject.toml`, the wheel and source build, and installing the package in a
+  clean virtual environment.
+- The final defense rehearsal, including the brief modification from chapter
+  IX.
 
 ## Instructions
 
@@ -47,17 +54,22 @@ Requires Python 3.10 or later. A virtual environment is recommended.
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install pytest
+make install
 ```
+
+`make install` upgrades `pip` and installs the development tools (`pytest`,
+`flake8`, `mypy`). The module itself has no runtime dependency.
 
 Run the program with the config file as the only argument:
 
 ```bash
-python3 a_maze_ing.py config.txt
+make run
 ```
 
 The program writes the output file named in `OUTPUT_FILE`, prints the seed it
-used, and opens the terminal menu.
+used, and opens the terminal menu. The `Makefile` also has `debug` (runs the
+program under `pdb`), `clean` (removes `__pycache__` and the tool caches),
+`lint` and `lint-strict` (the `flake8` and `mypy` commands from the subject).
 
 Check a generated file with the analyzer supplied with the subject:
 
@@ -71,8 +83,9 @@ Run the tests:
 python3 -m pytest
 ```
 
-The current suite has 27 tests covering the config parser, the graph helper,
-the generator, the solver, the serializer, the `42` mask, and the CLI.
+The suite has 34 tests covering the config parser, the graph helper, the
+generator in both modes, the solver, the serializer, the `42` mask, and the
+CLI.
 
 ## Configuration file
 
@@ -86,12 +99,16 @@ Default `config.txt` in this repository:
 # a-maze-ing default configuration
 WIDTH=10
 HEIGHT=10
-ENTRY=0,0
-EXIT=9,8
-PERFECT=True
+ENTRY=4,4
+EXIT=9,9
+PERFECT=False
 SEED=42
 OUTPUT_FILE=maze.txt
 ```
+
+The default `ENTRY=4,4` is one of the central cells that is not covered by the
+`42` pattern, and `EXIT=9,9` is a corner. The default config therefore
+exercises the Pac-Man mode.
 
 | Key | Mandatory | Meaning |
 | --- | --- | --- |
@@ -139,8 +156,13 @@ visited, so the backtracker never opens a wall in them. They stay fully closed
 too small for the pattern, the program prints an error on the console and
 omits it, as the subject allows.
 
-`PERFECT=False` will reuse the same spanning tree and then open extra walls to
-create loops, and braid the dead-ends. That work is not finished yet.
+With `PERFECT=False`, the same spanning tree is post-processed. The grid is
+read as a graph, where opening one wall between two already-connected cells
+adds exactly one independent cycle. Every real dead-end gets one extra wall
+opened so it gains a second route, and random interior walls are opened until
+the board has at least two independent routes. Corners and centre stay
+reachable because opening walls never disconnects the graph, and no wall is
+ever opened into a `42` cell.
 
 ## Reusable module
 
@@ -160,8 +182,9 @@ maze.write_output("maze.txt", (0, 0), (14, 19))
 ```
 
 `width` and `height` are required. `seed` makes the output reproducible.
-`draw_42` turns the `42` pattern on. Entry and exit passed to `solve` and
-`write_output` use internal `(row, column)` order.
+`draw_42` turns the `42` pattern on, and `perfect` selects a perfect maze
+(`True`, the default) or a Pac-Man board (`False`). Entry and exit passed to
+`solve` and `write_output` use internal `(row, column)` order.
 
 The class uses only the standard library, so the module has no runtime
 dependencies. It will be packaged as `mazegen-*` (wheel and source
@@ -176,12 +199,12 @@ and distribute this module.
 The project is developed by two students.
 
 - `matalmei` (Matheus) worked on the input boundary (config parser), the
-  `MazeGenerator` with seed-based reproducibility, the shortest-path solver,
-  the serializer, and the merge of the two generation branches into
-  `mazegen.py`. The remaining planned work on this side is the Makefile, the
-  package build, the lint pass, and this README.
+  `MazeGenerator` with seed-based reproducibility, the Pac-Man post-processing,
+  the shortest-path solver, the serializer, and the merge of the two generation
+  branches into `mazegen.py`. The remaining planned work on this side is the
+  package build and the defense rehearsal.
 - `vfreitas` (Vitor) worked on the iterative depth-first generation, the `42`
-  mask, the ASCII display, and the interactive menu.
+  mask, the ASCII display, the interactive menu, and the `Makefile`.
 
 Planning started with a tracer bullet: get the thinnest path that crosses the
 whole system from the config file to an analyzer-approved output, then grow it

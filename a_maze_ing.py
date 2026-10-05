@@ -6,6 +6,7 @@ from menu import menu
 
 MANDATORY_KEYS = ("WIDTH", "HEIGHT", "ENTRY", "EXIT", "OUTPUT_FILE", "PERFECT")
 
+
 class ConfigError(Exception):
     """Raised on any invalid configuration."""
 
@@ -105,6 +106,7 @@ def main(argv: list[str]) -> int:
         print(f"Error: cannot write output file: {error}", file=sys.stderr)
         return 1
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv))

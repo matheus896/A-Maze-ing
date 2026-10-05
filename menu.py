@@ -25,7 +25,7 @@ def _next_seed(config: Config, first: bool) -> int:
 def _new_maze(config: Config, seed: int) -> MazeGenerator:
     """Generate a maze with seed, validate it and save its output file."""
     maze = MazeGenerator(config.width, config.height, seed,
-                         draw_42=True)
+                         draw_42=True, perfect=config.perfect)
     maze.generate()
     if config.entry in maze.blocked or config.exit in maze.blocked:
         raise ValueError("ENTRY/EXIT cannot lie inside the '42' pattern")

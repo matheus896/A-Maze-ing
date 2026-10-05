@@ -1,11 +1,15 @@
-"""Perfect maze generation, solving and hexadecimal output."""
-
 import random
 import sys
 from collections import deque
 from dataclasses import dataclass
 
 NORTH, EAST, SOUTH, WEST = 1, 2, 4, 8
+
+MIN_LOOPS = 2
+
+_DIRECTIONS: tuple[tuple[int, int, int], ...] = (
+    (NORTH, -1, 0), (EAST, 0, 1), (SOUTH, 1, 0), (WEST, 0, -1),
+)
 
 MASK_42: tuple[tuple[int, ...], ...] = (
     (1, 0, 1, 0, 1, 1, 1),
@@ -18,28 +22,38 @@ MASK_42: tuple[tuple[int, ...], ...] = (
 
 @dataclass
 class MazeGenerator:
-    """Generate a perfect maze as a grid of wall bitmasks."""
+    """Generate a perfect or Pac-Man maze as a grid of wall bitmasks."""
 
     width: int
     height: int
     seed: int | None = None
     draw_42: bool = False
+    perfect: bool = True
 
     def __post_init__(self) -> None:
         self._rng: random.Random = random.Random(self.seed)
-        self.grid: list[list[int]] = [[NORTH | EAST | SOUTH | WEST
-                                       for _ in range(self.width)]
-                                       for _ in range(self.height)]
+        self.grid: list[list[int]] = [
+            [NORTH | EAST | SOUTH | WEST for _ in range(self.width)]
+            for _ in range(self.height)
+        ]
         self.blocked: set[tuple[int, int]] = set()
 
     def generate(self) -> list[list[int]]:
-        """Carve a perfect maze (spanning tree) and return the grid."""
+        """Carve a maze and return the grid.
+
+        A perfect maze (spanning tree) when ``perfect`` is true. Otherwise the
+        tree gets braided and extra walls are opened until it has at least
+        ``MIN_LOOPS`` independent routes.
+        """
         self.blocked = self._mask_42() if self.draw_42 else set()
         self._generate_perfect()
+        if not self.perfect:
+            self._braid()
+            self._add_loops(MIN_LOOPS)
         return self.grid
 
     def _mask_42(self) -> set[tuple[int, int]]:
-        """Cells of the "42" pattern, or none (with a console error) if small."""
+        """Return the "42" cells, or an empty set if the maze is too small."""
         mask_h, mask_w = len(MASK_42), len(MASK_42[0])
         if self.height < mask_h + 2 or self.width < mask_w + 2:
             print("Error: the maze is too small for the '42' pattern; "
@@ -51,9 +65,10 @@ class MazeGenerator:
                 for r, row in enumerate(MASK_42)
                 for c, value in enumerate(row) if value}
 
-    def _unvisited_neighbours(self, r: int, c: int,
-                              visited: list[list[bool]]) -> list[tuple[int, int, int]]:
-        """Return in-grid neighbours not yet visited, with the wall bit between."""
+    def _unvisited_neighbours(
+        self, r: int, c: int, visited: list[list[bool]]
+    ) -> list[tuple[int, int, int]]:
+        """In-grid neighbours not yet visited, with the wall bit between."""
         out = []
         for nr, nc, side in ((r - 1, c, NORTH), (r, c + 1, EAST),
                              (r + 1, c, SOUTH), (r, c - 1, WEST)):
@@ -95,6 +110,51 @@ class MazeGenerator:
             self._carve(r, c, side)
             visited[nr][nc] = True
             stack.append((nr, nc))
+
+    def _passage_count(self, r: int, c: int) -> int:
+        """Number of open walls of a cell (its graph degree)."""
+        return sum(1 for side, _, _ in _DIRECTIONS
+                   if not self.grid[r][c] & side)
+
+    def _openable_walls(self, r: int, c: int) -> list[int]:
+        """Closed walls of a cell that face an in-grid, non-blocked cell."""
+        out = []
+        for side, dr, dc in _DIRECTIONS:
+            nr, nc = r + dr, c + dc
+            if self.grid[r][c] & side and 0 <= nr < self.height \
+               and 0 <= nc < self.width and (nr, nc) not in self.blocked:
+                out.append(side)
+        return out
+
+    def _braid(self) -> None:
+        """Open one wall in every real dead-end so it gains a second route."""
+        for r in range(self.height):
+            for c in range(self.width):
+                if (r, c) in self.blocked or self._passage_count(r, c) != 1:
+                    continue
+                openable = self._openable_walls(r, c)
+                if openable:
+                    self._carve(r, c, self._rng.choice(openable))
+
+    def _loops(self) -> int:
+        """Independent cycles: edges - nodes + 1 over the open cells."""
+        nodes = self.width * self.height - len(self.blocked)
+        edges = sum(self._passage_count(r, c)
+                    for r in range(self.height)
+                    for c in range(self.width)) // 2
+        return edges - nodes + 1
+
+    def _add_loops(self, minimum: int) -> None:
+        """Open random interior walls until there are enough loops."""
+        while self._loops() < minimum:
+            walls = [(r, c, side)
+                     for r in range(self.height)
+                     for c in range(self.width)
+                     if (r, c) not in self.blocked
+                     for side in self._openable_walls(r, c)]
+            if not walls:
+                return
+            self._carve(*self._rng.choice(walls))
 
     def solve(self, entry: tuple[int, int], exit: tuple[int, int]) -> str:
         """Return the shortest entry-to-exit path as N, E, S, W letters."""
