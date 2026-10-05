@@ -9,7 +9,9 @@ env/
 build/
 dist/
 *.whl
+!mazegen-*.whl
 *.tar.gz
+!mazegen-*.tar.gz
 maze.txt
 maze-*.txt
 teach/

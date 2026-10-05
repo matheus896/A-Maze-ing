@@ -9,6 +9,7 @@ all: run
 
 install:
 	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -e .
 	$(PYTHON) -m pip install pytest flake8 mypy
 
 run:
