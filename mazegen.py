@@ -31,12 +31,19 @@ class MazeGenerator:
     perfect: bool = True
 
     def __post_init__(self) -> None:
+        if self.width <= 0 or self.height <= 0:
+            raise ValueError("maze width and height must be positive")
         self._rng: random.Random = random.Random(self.seed)
+        self._reset_grid()
+        self.blocked: set[tuple[int, int]] = set()
+
+    def _reset_grid(self) -> None:
+        """Restore every cell to its fully walled initial state."""
+        all_walls = NORTH | EAST | SOUTH | WEST
         self.grid: list[list[int]] = [
-            [NORTH | EAST | SOUTH | WEST for _ in range(self.width)]
+            [all_walls for _ in range(self.width)]
             for _ in range(self.height)
         ]
-        self.blocked: set[tuple[int, int]] = set()
 
     def generate(self) -> list[list[int]]:
         """Carve a maze and return the grid.
@@ -45,6 +52,7 @@ class MazeGenerator:
         tree gets braided and extra walls are opened until it has at least
         ``MIN_LOOPS`` independent routes.
         """
+        self._reset_grid()
         self.blocked = self._mask_42() if self.draw_42 else set()
         self._generate_perfect()
         if not self.perfect:
@@ -158,6 +166,10 @@ class MazeGenerator:
 
     def solve(self, entry: tuple[int, int], exit: tuple[int, int]) -> str:
         """Return the shortest entry-to-exit path as N, E, S, W letters."""
+        for label, (row, col) in (("entry", entry), ("exit", exit)):
+            if not (0 <= row < self.height and 0 <= col < self.width):
+                message = f"{label} {row, col} is outside the maze bounds"
+                raise ValueError(message)
         moves = ((NORTH, -1, 0, "N"), (EAST, 0, 1, "E"),
                  (SOUTH, 1, 0, "S"), (WEST, 0, -1, "W"))
         parent: dict[tuple[int, int], tuple[tuple[int, int], str]] = {}

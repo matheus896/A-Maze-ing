@@ -63,9 +63,9 @@ def render_ascii(maze: MazeGenerator, entry: tuple[int, int],
             elif here == exit_:
                 content = " X "
             elif here in maze.blocked:
-                content = "███"
+                content = "###"
             elif here in path_cells:
-                content = " • "
+                content = " * "
             else:
                 content = "   "
             if maze.grid[r][c] & EAST:

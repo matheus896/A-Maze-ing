@@ -9,7 +9,8 @@ each cell as a hexadecimal digit, writes the result to an output file, and
 shows the maze in the terminal with its shortest solution path.
 
 The project has two generation modes. With `PERFECT=True` the maze is a
-perfect maze: a single path connects any two cells, so there are no loops.
+perfect maze: a single path connects any two traversable cells,
+so there are no loops.
 With `PERFECT=False` the maze is meant to be a playable Pac-Man board, with
 independent routes, reachable corners and centre, and few dead-ends.
 
@@ -26,7 +27,7 @@ Implemented and validated end to end for both modes:
 - `MazeGenerator`: wall bitmask grid, iterative recursive-backtracker
   generation, seed-based reproducibility, and the visible `42` pattern made of
   fully closed cells.
-- `PERFECT=True`: a perfect maze, one path between any two cells.
+- `PERFECT=True`: a perfect maze, one path between any two traversable cells.
 - `PERFECT=False`: a playable Pac-Man board. The tree is braided so no real
   dead-end is left, and interior walls are opened until there are at least two
   independent routes.
@@ -40,13 +41,6 @@ Implemented and validated end to end for both modes:
 - `flake8` and `mypy` pass with the flags from the subject, and the `Makefile`
   exposes the targets it requires.
 
-Still to do:
-
-- `pyproject.toml`, the wheel and source build, and installing the package in a
-  clean virtual environment.
-- The final defense rehearsal, including the brief modification from chapter
-  IX.
-
 ## Instructions
 
 Requires Python 3.10 or later. A virtual environment is recommended.
@@ -57,8 +51,9 @@ source .venv/bin/activate
 make install
 ```
 
-`make install` upgrades `pip` and installs the development tools (`pytest`,
-`flake8`, `mypy`). The module itself has no runtime dependency.
+`make install` upgrades `pip` and installs the package plus build and development
+tools (`build`, `pytest`, `flake8`, `mypy`). The module itself has no
+runtime dependency.
 
 Run the program with the config file as the only argument:
 
@@ -97,8 +92,8 @@ Default `config.txt` in this repository:
 
 ```text
 # a-maze-ing default configuration
-WIDTH=10
-HEIGHT=10
+WIDTH=12
+HEIGHT=15
 ENTRY=4,4
 EXIT=9,9
 PERFECT=False
@@ -106,9 +101,8 @@ SEED=42
 OUTPUT_FILE=maze.txt
 ```
 
-The default `ENTRY=4,4` is one of the central cells that is not covered by the
-`42` pattern, and `EXIT=9,9` is a corner. The default config therefore
-exercises the Pac-Man mode.
+The default `ENTRY=4,4` and `EXIT=9,9` are valid cells for the `42` mask.
+The default config exercises Pac-Man mode with a fixed seed.
 
 | Key | Mandatory | Meaning |
 | --- | --- | --- |
@@ -144,11 +138,12 @@ to exit using the letters `N`, `E`, `S`, `W`. Every line ends with `\n`.
 The generator uses an iterative recursive backtracker, which is a
 depth-first search that carves passages as it visits cells.
 
-It was chosen because it builds a spanning tree over the cells: every cell is
-reachable and no cycle is created. That is exactly what `PERFECT=True`
-requires, a single path between any two cells. The traversal keeps an explicit
-list as a stack instead of using Python recursion, because the default
-recursion limit of about 1000 frames would break on large mazes.
+It was chosen because it builds a spanning tree over the traversable cells:
+every cell outside the `42` pattern is reachable and no cycle is created.
+That is exactly what `PERFECT=True` requires: a single path between any two
+cells. The traversal keeps an explicit stack instead of using Python recursion,
+because the default recursion limit of about 1000 frames would break on large
+mazes.
 
 The `42` pattern is applied before carving. Its cells are marked as already
 visited, so the backtracker never opens a wall in them. They stay fully closed
@@ -187,9 +182,8 @@ maze.write_output("maze.txt", (0, 0), (14, 19))
 `solve` and `write_output` use internal `(row, column)` order.
 
 The class uses only the standard library, so the module has no runtime
-dependencies. It will be packaged as `mazegen-*` (wheel and source
-distribution) from a `pyproject.toml` at the repository root. The packaging
-files are not in place yet.
+dependencies. The package metadata is in `pyproject.toml` at the repository
+root. Run `make build` to regenerate the wheel and source distribution.
 
 The `LICENSE.md` at the repository root is MIT, so a later project can reuse
 and distribute this module.
@@ -201,8 +195,8 @@ The project is developed by two students.
 - `matalmei` (Matheus) worked on the input boundary (config parser), the
   `MazeGenerator` with seed-based reproducibility, the Pac-Man post-processing,
   the shortest-path solver, the serializer, and the merge of the two generation
-  branches into `mazegen.py`. The remaining planned work on this side is the
-  package build and the defense rehearsal.
+  branches into `mazegen.py`. Remaining work: rebuild the package in a
+  clean virtual environment and rehearse the defense.
 - `vfreitas` (Vitor) worked on the iterative depth-first generation, the `42`
   mask, the ASCII display, the interactive menu, and the `Makefile`.
 
