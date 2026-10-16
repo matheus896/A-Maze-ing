@@ -29,7 +29,6 @@ def _new_maze(config: Config, seed: int) -> MazeGenerator:
     maze.generate()
     if config.entry in maze.blocked or config.exit in maze.blocked:
         raise ValueError("ENTRY/EXIT cannot lie inside the '42' pattern")
-    maze.write_output(config.output_file, config.entry, config.exit)
     return maze
 
 
@@ -84,6 +83,7 @@ def menu(config: Config) -> None:
     show_path = False
     seed = _next_seed(config, first=True)
     maze = _new_maze(config, seed)
+    maze.write_output(config.output_file, config.entry, config.exit)
     clear_terminal()
     render_ascii(maze, config.entry, config.exit, show_path, False)
     print(f"Seed: {seed}")
