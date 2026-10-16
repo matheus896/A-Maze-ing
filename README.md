@@ -31,6 +31,10 @@ Implemented and validated end to end for both modes:
 - `PERFECT=False`: a playable Pac-Man board. The tree is braided so no real
   dead-end is left, and interior walls are opened until there are at least two
   independent routes.
+- The reusable `mazegen` module is packaged as both a wheel and a source
+  distribution in the repository root. Both artifacts were installed in clean
+  virtual environments; the source distribution can be rebuilt from the
+  checked-in project sources with `make build`.
 - `solve(entry, exit)`: breadth-first search returning the shortest path as
   `N`, `E`, `S`, `W`.
 - Hexadecimal output file with the entry, exit, and path footer.
@@ -38,8 +42,8 @@ Implemented and validated end to end for both modes:
   menu to regenerate, show or hide the path, change wall colours, and quit.
 - `maze_analyzer.py` reports `PERFECT maze` with `PERFECT=True` and
   `Pac-Man-USABLE` (bonus grade, no real dead-end) with `PERFECT=False`.
-- `flake8` and `mypy` pass with the flags from the subject, and the `Makefile`
-  exposes the targets it requires.
+- All 34 tests pass; `make lint` runs `flake8` and `mypy` with the flags from
+  the subject, and the `Makefile` exposes the required targets.
 
 ## Instructions
 
@@ -81,6 +85,16 @@ python3 -m pytest
 The suite has 34 tests covering the config parser, the graph helper, the
 generator in both modes, the solver, the serializer, the `42` mask, and the
 CLI.
+
+To rebuild the distributable wheel and source archive from the repository
+sources, run:
+
+```bash
+make build
+```
+
+The generated files are placed in `dist/`; the submitted copies of
+`mazegen-*.whl` and `mazegen-*.tar.gz` are kept at the repository root.
 
 ## Configuration file
 
@@ -195,8 +209,9 @@ The project is developed by two students.
 - `matalmei` (Matheus) worked on the input boundary (config parser), the
   `MazeGenerator` with seed-based reproducibility, the Pac-Man post-processing,
   the shortest-path solver, the serializer, and the merge of the two generation
-  branches into `mazegen.py`. Remaining work: rebuild the package in a
-  clean virtual environment and rehearse the defense.
+  branches into `mazegen.py`, as well as the reusable package and its release
+  artifacts. Remaining work: rehearse the defense, including a brief live
+  modification.
 - `vfreitas` (Vitor) worked on the iterative depth-first generation, the `42`
   mask, the ASCII display, the interactive menu, and the `Makefile`.
 
@@ -215,6 +230,9 @@ footer cost debugging time because it failed silently.
 
 Tools used: Python 3.10+, `venv`, pytest, Git and GitHub, the supplied
 `maze_analyzer.py`, and AI assistance described below.
+
+The commit-by-commit development history and the reasons for the main changes
+are recorded in [RELEASE.md](RELEASE.md).
 
 ## Resources
 
